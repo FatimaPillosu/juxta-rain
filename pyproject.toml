@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rainfall_visualiser"
+version = "0.1.0"
+description = "ECMWF open-data 24 h rainfall forecasts vs point observations"
+requires-python = ">=3.11"
+dependencies = [
+    "ecmwf-opendata>=0.3.35",
+    "eccodes>=2.50",
+    "cfgrib",
+    "xarray",
+    "numpy",
+    "pandas",
+    "rioxarray",
+    "rasterio",
+    "requests",
+    "pyyaml",
+    "pillow",
+    "pymupdf",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]

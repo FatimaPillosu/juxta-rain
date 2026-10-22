@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "rainfall-site",
+      "runtimeExecutable": ".venv/Scripts/python.exe",
+      "runtimeArgs": ["-m", "rainfall_visualiser.serve", "--port", "8000"],
+      "port": 8000
+    }
+  ]
+}

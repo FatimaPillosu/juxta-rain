@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Juxta Rain</title>
+  <meta name="description" content="Juxta Rain: 24 h rainfall forecasts from ECMWF IFS and AIFS open data and ecPoint-Rainfall charts. Educational resource, not a warning service.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&family=Roboto+Mono:wght@400&display=swap">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/openlayers/10.2.1/ol.css">
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+  <header class="bar">
+    <span class="name">Juxta Rain</span>
+    <span class="bar-note"><span class="long">Educational resource · </span>not a forecasting or warning service</span>
+    <a class="bar-icon" href="#sources" title="Data &amp; Sources" aria-label="Data and sources">
+      <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg>
+    </a>
+  </header>
+
+  <div class="sub">
+    <img class="brand-logo" src="assets/juxta-rain-logo.svg" alt="Juxta Rain">
+    <div class="crumb">ECMWF open data <span>›</span> 24 h precipitation <span>›</span> <b>Global</b></div>
+    <label class="runbox">Run: <select id="run-select" aria-label="Forecast run"></select></label>
+  </div>
+
+  <nav class="tabs" aria-label="Views">
+    <a class="tab" href="#forecast" data-view="forecast">Forecast</a>
+    <span class="tab off" aria-disabled="true">Verification<small>coming soon</small></span>
+    <a class="tab" href="#sources" data-view="sources">Data &amp; Sources</a>
+  </nav>
+
+  <main>
+    <!-- Forecast -->
+    <section id="view-forecast" class="view" hidden>
+      <div class="row head-row">
+        <h1>Forecast</h1>
+        <div class="runner">
+          <button id="lead-prev" class="btn" aria-label="Previous 24 h window">◀</button>
+          <output id="lead-label" class="win"></output>
+          <button id="lead-next" class="btn" aria-label="Next 24 h window">▶</button>
+        </div>
+      </div>
+      <input id="lead-slider" class="slider" type="range" min="0" max="0" step="1" value="0" aria-label="24 h window">
+      <div id="lead-ticks" class="ticks" aria-hidden="true"></div>
+
+      <div class="card readout" aria-live="polite">
+        <div>
+          <div class="lbl">24 h total at the point</div>
+          <div class="place" id="ro-place">Click any map to choose a point</div>
+          <div class="kv">
+            <span class="k">IFS Control</span><span class="v" id="ro-ctrl">–</span>
+            <span class="k">AIFS Single</span><span class="v" id="ro-aifs">–</span>
+          </div>
+        </div>
+        <div class="sep"></div>
+        <div class="ro-prob">
+          <div class="lbl">Probability of 24 h precipitation above threshold</div>
+          <table class="pt" id="ro-table"></table>
+        </div>
+      </div>
+
+      <section class="block">
+        <div class="row"><h2>24 h total precipitation</h2></div>
+        <div class="grid2">
+          <figure class="card map-card">
+            <figcaption><b>IFS Control</b><span>physics-based · 0.1°</span></figcaption>
+            <div id="map-ifs_hres" class="map"></div>
+            <div class="panel-note" id="note-ifs_hres" hidden></div>
+          </figure>
+          <figure class="card map-card">
+            <figcaption><b>AIFS Single</b><span>machine-learned · 0.25°</span></figcaption>
+            <div id="map-aifs_single" class="map"></div>
+            <div class="panel-note" id="note-aifs_single" hidden></div>
+          </figure>
+        </div>
+        <div class="lg" id="legend-amount"></div>
+      </section>
+
+      <section class="block">
+        <div class="row"><h2>Probability of 24 h precipitation</h2><div class="ttabs" data-thr-tabs></div></div>
+        <div class="grid3">
+          <figure class="card map-card">
+            <figcaption><b>IFS ENS</b><span>raw, grid-box · 0.1°</span></figcaption>
+            <div id="map-ifs_ens_prob" class="map"></div>
+            <div class="panel-note" id="note-ifs_ens_prob" hidden></div>
+          </figure>
+          <figure class="card map-card">
+            <figcaption><b>AIFS ENS</b><span>raw, grid-box · 0.25°</span></figcaption>
+            <div id="map-aifs_ens_prob" class="map"></div>
+            <div class="panel-note" id="note-aifs_ens_prob" hidden></div>
+          </figure>
+          <figure class="card map-card">
+            <figcaption><b>ecPoint-Rainfall</b><span>point · ECMWF chart, map area</span><a id="ecpoint-link" class="cap-link" target="_blank" rel="noopener">original ›</a></figcaption>
+            <div id="map-ecpoint" class="map"></div>
+            <div class="panel-note" id="note-ecpoint" hidden></div>
+          </figure>
+        </div>
+        <div class="lg" id="legend-prob"></div>
+      </section>
+
+      <section class="block">
+        <div class="row"><h2 id="bars-title">24 h totals at the point</h2></div>
+        <div class="card chartcard">
+          <div class="key"><span><i class="sw-ifs"></i>IFS Control</span><span><i class="sw-aifs"></i>AIFS Single</span><span>mm per 24 h window · click a bar to select its window</span></div>
+          <div id="chart-bars" class="chart"><p class="chart-empty">Click any map to choose a point.</p></div>
+        </div>
+      </section>
+
+      <section class="block">
+        <div class="row"><h2 id="lines-title">Probability above threshold at the point</h2><div class="ttabs" data-thr-tabs></div></div>
+        <div class="card chartcard">
+          <div class="key"><span><i class="sw-ifs"></i>IFS ENS</span><span><i class="sw-aifs"></i>AIFS ENS</span><span><i class="sw-ec"></i>ecPoint chart colour class (range)</span><span id="lines-sub">by 24 h window</span></div>
+          <div id="chart-lines" class="chart"><p class="chart-empty">Click any map to choose a point.</p></div>
+        </div>
+      </section>
+    </section>
+
+    <!-- Data & Sources -->
+    <section id="view-sources" class="view prose" hidden>
+      <h1>Data &amp; Sources</h1>
+      <p class="attribution">This output is based on data and products of the European Centre for Medium-Range Weather Forecasts (ECMWF). Licence: <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>. Changes were made — see “Processing” below. ECMWF does not accept any liability whatsoever for any error or omission in the data, their availability, or for any loss or damage arising from their use.</p>
+
+      <div class="card table-wrap">
+      <table class="src">
+        <thead><tr><th>Product</th><th>Source and access</th><th>Coverage used</th><th>Licence</th></tr></thead>
+        <tbody>
+          <tr><td>IFS Control — 24 h total precipitation</td><td>ECMWF real-time open data, <code>data.ecmwf.int/forecasts</code>, via the <code>ecmwf-opendata</code> client (<code>model=ifs</code>, <code>stream=oper</code>, <code>type=fc</code>, <code>param=tp</code>). Since IFS cycle 50r1 this forecast is the ensemble control (formerly HRES).</td><td>0.1° global; 00/12 UTC runs to T+360, 06/18 UTC to T+144</td><td>CC BY 4.0 · ECMWF Terms of Use · <a href="https://doi.org/10.21957/open-data" target="_blank" rel="noopener">doi:10.21957/open-data</a></td></tr>
+          <tr><td>AIFS Single — 24 h total precipitation</td><td>As above (<code>model=aifs-single</code>)</td><td>0.25° global; to T+360</td><td>As above</td></tr>
+          <tr><td>IFS ENS — probability of 24 h precipitation &gt; 1, 5, 10, 25, 50, 100 mm</td><td>As above (<code>stream=enfo</code>, <code>type=ep</code>, <code>param=tpg1…tpg100</code>)</td><td>0.1° global; 24 h ranges every 12 h to T+360</td><td>As above</td></tr>
+          <tr><td>AIFS ENS — the same probabilities</td><td>As above (<code>model=aifs-ens</code>)</td><td>0.25° global; to T+360</td><td>As above</td></tr>
+          <tr><td>ecPoint-Rainfall — probabilities of point rainfall in 24 h (EXPERIMENTAL)</td><td>ECMWF Open Charts, product <code>medium-point-rain-prob-24h</code>, global area, retrieved through the Open Charts API</td><td>Thresholds 1–100 mm; 00/12 UTC runs to T+360, 06/18 UTC to T+144</td><td>CC BY 4.0, © ECMWF. Cropped to the map area; otherwise unchanged.</td></tr>
+        </tbody>
+      </table>
+      </div>
+
+      <h2>Processing (changes made to the ECMWF data)</h2>
+      <ul>
+        <li>24 h totals for IFS Control and AIFS Single are differences of the total precipitation accumulated from the start of the run: tp(T+L) − tp(T+L−24). IFS tp (m) is converted to mm; AIFS tp is already in kg m⁻² (mm). Small negative differences from data packing (down to about −0.1 mm) are set to 0.</li>
+        <li>Each 24 h window is aligned with the run's cycle: 00/12 UTC runs give windows ending at 00 or 12 UTC; 06/18 UTC runs give windows ending at 06 or 18 UTC.</li>
+        <li>Fields are re-encoded as Cloud-Optimised GeoTIFFs on the original grids: amounts rounded to 0.1 mm, probabilities to 1 %. No interpolation or smoothing; zoomed-out views sample grid points (nearest neighbour). Values at a point are those of the nearest grid point of each model.</li>
+        <li>The ecPoint charts are downloaded as vector PDFs and only their map area is shown (title and legend removed), otherwise as published, with a link to the original chart.</li>
+        <li>At the chosen point, the ecPoint row of the table gives the <em>colour class</em> of the chart there (for example 40.5–60.5 %), not a probability value. It is read from the chart's own coloured polygons, redrawn without coastlines or gridlines; on the charts checked it matches the displayed colour on more than 99.9 % of the map. The probability chart at the point shows the same class range as a shaded band for every 24 h window. ecPoint is not used in any score.</li>
+      </ul>
+      <p>Coastlines and land boundaries: <a href="https://www.naturalearthdata.com" target="_blank" rel="noopener">Natural Earth</a> 1:50m (public domain), coordinates rounded to 0.01°.</p>
+
+      <h2>What this site is not</h2>
+      <p>It is not a forecasting or warning service. Its purpose is to show the difference between gridded forecasts and point observations, and what it is reasonable to expect from each. For warnings, use your national meteorological service (in Europe, <a href="https://www.meteoalarm.org" target="_blank" rel="noopener">Meteoalarm</a>).</p>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <span><span class="chip">CC BY 4.0</span>Based on data and products of ECMWF. ecPoint charts © ECMWF.</span>
+    <span id="build-info"></span>
+  </footer>
+
+  <!-- The full OpenLayers build reads COGs through geotiff.js, loaded as the global GeoTIFF. -->
+  <script src="https://unpkg.com/geotiff@2.1.3/dist-browser/geotiff.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/openlayers/10.2.1/dist/ol.js"></script>
+  <script src="assets/palettes.js"></script>
+  <script src="assets/charts.js"></script>
+  <script src="assets/app.js"></script>
+</body>
+</html>

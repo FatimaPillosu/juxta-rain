@@ -1,0 +1,56 @@
+# Settings for the rainfall visualiser.
+# DATA_ROOT is outside OneDrive so large GRIB files are not synced.
+data_root: "C:/data/rainfall_visualiser"
+
+# Probability thresholds (mm/24 h) shared by IFS ENS (tpg*), AIFS ENS and ecPoint charts.
+thresholds_mm: [1, 5, 10, 25, 50, 100]
+
+opendata:
+  source: ecmwf
+  products:
+    ifs_hres:
+      model: ifs
+      resol: "0p1"
+      stream: oper
+      type: fc
+      param: tp
+    aifs_single:
+      model: aifs-single
+      resol: "0p25"
+      stream: oper
+      type: fc
+      param: tp
+    ifs_ens_prob:
+      model: ifs
+      resol: "0p1"
+      stream: enfo
+      type: ep
+    aifs_ens_prob:
+      model: aifs-ens
+      resol: "0p25"
+      stream: enfo
+      type: ep
+      # The .index offsets of these files restart at 0 for each joined part
+      # (found 22 Oct 2026), so ecmwf-opendata returns corrupt fields.
+      # Download by corrected byte ranges and decode-check every field instead.
+      verified_ranges: true
+
+ecpoint:
+  product: medium-point-rain-prob-24h
+  projection: opencharts_global
+  api: https://charts.ecmwf.int/opencharts-api/v1/products
+  # Seconds to wait between requests to Open Charts.
+  pause_s: 5
+  # Charts are downloaded as vector PDFs (sharper when zoomed than the PNGs).
+  format: pdf
+  # Positions (PDF points) of 180W, 90N, 180E, 90S in the global chart, read from
+  # its vector gridlines (20 deg = 36.51 pt, 10 deg = 18.26 pt) on 22 Oct 2026.
+  map_frame_pt: [92.25, 107.29, 749.45, 435.92]
+  # Width in pixels of the map area rendered from the PDF (height = width / 2).
+  map_width_px: 6000
+  # WebP quality for the displayed picture; the smaller of this lossy version and a
+  # lossless one is kept (lossy halves busy charts but enlarges sparse ones).
+  map_webp_quality: 90
+  # Same frame in the 2000x1800 PNG charts (fitted to the gridlines of 45 charts,
+  # spread <= 0.2 px); used only for charts downloaded as PNG.
+  map_frame_px: [10.2, 293.8, 1988.8, 1282.0]
