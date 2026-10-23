@@ -168,3 +168,17 @@
   - Whether Open Charts accepts requests from GitHub's servers (to be seen in this run).
   - Delete the old `gh-pages` branch (778 MB) once the workflow deploy is confirmed.
   - No history is stored anywhere; the verification archive is still to be decided.
+
+## 2026-10-23 — Claude Code (first automated publication)
+
+- Changes:
+  - Run 39966932932 (manual trigger, 2026102300) succeeded: build plus deploy, 14:07–15:43 UTC.
+  - The schedule moved to 09:30 UTC (commit 3a196d3). Before downloading ecPoint, the job checks that Open Charts lists the run's base time (`wait_for_base_time`, up to 1.5 h); the open-data wait is capped at 2 h, within the 340 min job limit.
+  - The unused `gh-pages` branch (778 MB snapshot of 22 Oct) was deleted; the repository holds only `main`. README updated.
+- Verification:
+  - Job log: all four products downloaded on GitHub's servers in about 5 min (IFS ENS 0.1° 383 MB in 131 s). All **174 ecPoint charts downloaded with no failures or retries**, so Open Charts accepts requests from GitHub's servers. The main step took 1 h 34 min in total.
+  - Live site: runs = [2026102300]; shows "Fri 23 Oct 2026 00 UTC"; the first window is 23 Oct 00 UTC → 24 Oct 00 UTC; 174 ecPoint charts; T+360 present; no console errors.
+- Open points:
+  - GitHub warnings: Node 20 actions are being forced onto Node 24 (move to newer action versions when available), and `ubuntu-latest` migrates to Ubuntu 26 from 19 Oct 2026, which may affect the Python wheels; check the first runs.
+  - Nothing is archived (verification archive still to be decided).
+  - `C:\data\rainfall_visualiser` (about 1.5 GB, the 23 Oct run) is only a local workspace and can be deleted.
