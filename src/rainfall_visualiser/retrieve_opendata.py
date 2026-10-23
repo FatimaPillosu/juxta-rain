@@ -129,6 +129,17 @@ def retrieve_ep_verified(spec, run, req, target):
         raise RuntimeError(f"Missing fields: {sorted(missing)[:5]} ... ({len(missing)} in total)")
 
 
+def run_complete(run, settings):
+    """True when the last forecast step of `run` is published for every product."""
+    for spec in settings["opendata"]["products"].values():
+        req = request_for(spec, run, settings["thresholds_mm"])
+        req.pop("date"), req.pop("time")
+        req["step"] = req["step"][-1:]
+        if client_for(spec, settings).latest(**req) < run:
+            return False
+    return True
+
+
 def grib_summary(path):
     """Count GRIB messages by parameter and list their steps."""
     params, steps = Counter(), set()
@@ -154,6 +165,13 @@ def retrieve(run, settings, only=None):
         start = str(req["step"][0]).split("-")[0]
         end = str(req["step"][-1]).split("-")[-1]
         target = out_dir / f"{spec['type']}_{spec.get('param', 'tpg')}_{start}-{end}h.grib2"
+        inventory = out_dir / "inventory.json"
+        if target.exists() and inventory.exists():
+            done = json.loads(inventory.read_text())
+            if done["run"] == run.isoformat() and len(done["steps"]) == len(req["step"]):
+                print(f"{name:14s} already downloaded")
+                entries.append(done)
+                continue
         t0 = time.perf_counter()
         if spec.get("verified_ranges"):
             retrieve_ep_verified(spec, run, req, target)

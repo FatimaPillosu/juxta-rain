@@ -1,0 +1,61 @@
+# Daily update of Juxta Rain: builds the site for today's 00 UTC ECMWF run on
+# GitHub's servers and publishes it to GitHub Pages. No data is committed.
+name: Daily forecast
+
+on:
+  schedule:
+    # 10:30 UTC: the 00 UTC open data (0.1 deg files included) and the ecPoint
+    # charts are normally available by then; the job waits up to 4 h if not.
+    - cron: "30 10 * * *"
+  workflow_dispatch:
+    inputs:
+      run:
+        description: "Run as YYYYMMDDHH (empty = today 00 UTC)"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    env:
+      RAIN_DATA_ROOT: /home/runner/rain-data
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install
+        run: pip install -e .
+
+      - name: Download, build and assemble the site
+        run: python -m rainfall_visualiser.daily ${{ inputs.run && format('--run {0}', inputs.run) || '' }}
+
+      - name: Site size
+        run: du -sh "$RAIN_DATA_ROOT/web" "$RAIN_DATA_ROOT/web/data"/*
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: /home/runner/rain-data/web
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

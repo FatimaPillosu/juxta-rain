@@ -1,5 +1,6 @@
 """Load project settings and build data paths."""
 
+import os
 from pathlib import Path
 
 import yaml
@@ -14,6 +15,9 @@ def load_settings():
 
 
 def data_root(settings=None):
+    """DATA_ROOT: the RAIN_DATA_ROOT environment variable if set (e.g. on GitHub Actions), else settings.yaml."""
+    if os.environ.get("RAIN_DATA_ROOT"):
+        return Path(os.environ["RAIN_DATA_ROOT"])
     settings = settings or load_settings()
     return Path(settings["data_root"])
 

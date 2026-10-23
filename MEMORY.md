@@ -136,3 +136,17 @@
   - A zoomed side-by-side over the UK and North Sea of the busiest chart shows no visible difference.
   - New sizes: ecPoint pictures 417 → 273 MB (0.79–2.75 MB each). One run in total 921 → 776 MB: IFS ENS 286 MB, ecPoint pictures 273 MB, IFS Control 93 MB, class rasters 57 MB, AIFS ENS 54 MB, AIFS Single 16 MB.
 - Open points: at 776 MB only one run fits within GitHub Pages' 1 GB limit, so more runs online would need other hosting for the rasters. To decide in the hosting milestone.
+
+## 2026-10-23 — Claude Code (published on GitHub Pages)
+
+- Changes:
+  - GitHub CLI 2.103.0 installed with winget at `C:\Program Files\GitHub CLI\gh.exe`; it is not on the PATH of terminals opened before the install. Fatima logged in with `gh auth login` as FatimaPillosu.
+  - Public repository https://github.com/FatimaPillosu/juxta-rain created. `main` holds the code only (commit f1bd55c; README.md added; `.gitignore` excludes data, `.venv`, `*.egg-info`, `.claude/settings.local.json`).
+  - The built site (00 UTC run of 22 Oct, 778 MB) is a separate git repository in `C:\data\rainfall_visualiser\web` on branch `gh-pages` (commit 4fc62b3, with `.nojekyll`), pushed in 3 minutes. GitHub enabled Pages from `gh-pages` automatically; HTTPS is enforced.
+  - Download of the 00 UTC run of 23 Oct started (open data, then the 174 ecPoint PDFs).
+- Verification: the Pages build reports "built". https://fatimapillosu.github.io/juxta-rain/ returns HTTP 200 with title "Juxta Rain", and `data/runs.json` returns 200. In the browser there were no console errors; a click at Paris filled the table in 0.7 s and both charts in 1.7 s (39 range requests, about 750 kB; GitHub serves HTTP/2).
+- Storage on 23 Oct, about 10 UTC: `C:\data\rainfall_visualiser` 3.7 GB.
+  - Raw for the 22 Oct run: GRIB 521 MB, ecPoint PDFs plus the earlier PNGs 1.4 GB.
+  - `web` 1.6 GB: the 778 MB site plus its git copy in `web/.git`.
+  - Drive C: 23 GB free.
+- Open points: a retention policy for raw data and runs; how to update `gh-pages` without the repository growing (orphan commit + force-push); the daily automation; observations and verification; the point archive; tests.

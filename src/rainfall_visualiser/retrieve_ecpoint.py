@@ -27,6 +27,22 @@ PAGE = "https://charts.ecmwf.int/products/{product}"
 MAX_LEAD = {0: 360, 6: 144, 12: 360, 18: 144}
 
 
+RETRY_WAITS_S = (30, 60, 120)  # Open Charts occasionally answers HTTP 500; wait and try again
+
+
+def get_with_retries(session, url, **kwargs):
+    for attempt, wait in enumerate((*RETRY_WAITS_S, None), start=1):
+        try:
+            r = session.get(url, timeout=180, **kwargs)
+            r.raise_for_status()
+            return r
+        except (requests.HTTPError, requests.ConnectionError, requests.Timeout) as err:
+            if wait is None:
+                raise
+            print(f"  attempt {attempt} failed ({err.__class__.__name__}); retrying in {wait} s", flush=True)
+            time.sleep(wait)
+
+
 def chart_requests(run, thresholds_mm, max_lead):
     """24 h charts every 12 h from T+24, as offered by Open Charts."""
     last = min(max_lead, MAX_LEAD[run.hour])
@@ -47,6 +63,7 @@ def retrieve(run, max_lead, settings):
     known = json.loads(index.read_text())["charts"] if index.exists() else []
     charts = {(c["lead_h"], c["threshold_mm"]): c for c in known
               if c["file"].endswith("." + fmt) and (out_dir / c["file"]).exists()}
+    failed = []
     for lead, thr in chart_requests(run, settings["thresholds_mm"], max_lead):
         if (lead, thr) in charts:
             continue
@@ -57,12 +74,15 @@ def retrieve(run, max_lead, settings):
             projection=cfg["projection"],
             threshold=str(thr / 1000),  # Open Charts thresholds are in metres
         )
-        meta = session.get(f"{cfg['api']}/{cfg['product']}/", params=dict(params, format=fmt), timeout=180)
-        meta.raise_for_status()
-        meta = meta.json()
-        time.sleep(cfg["pause_s"])
-        chart = session.get(meta["data"]["link"]["href"], timeout=180)
-        chart.raise_for_status()
+        try:
+            meta = get_with_retries(session, f"{cfg['api']}/{cfg['product']}/", params=dict(params, format=fmt)).json()
+            time.sleep(cfg["pause_s"])
+            chart = get_with_retries(session, meta["data"]["link"]["href"])
+        except requests.RequestException as err:
+            print(f"T+{lead:03d} >{thr:>3} mm  FAILED after retries: {err}", flush=True)
+            failed.append((lead, thr))
+            time.sleep(cfg["pause_s"])
+            continue
         name = f"thr{thr}_T{lead:03d}.{fmt}"
         (out_dir / name).write_bytes(chart.content)
         page_params = dict(params, base_time=f"{run:%Y%m%d%H%M}", valid_time=f"{valid:%Y%m%d%H%M}")
@@ -86,6 +106,8 @@ def retrieve(run, max_lead, settings):
         ordered = [charts[k] for k in sorted(charts)]
         index.write_text(json.dumps(dict(run=run.isoformat(), charts=ordered), indent=2))
         time.sleep(cfg["pause_s"])
+    if failed:
+        print(f"{len(failed)} chart(s) not downloaded; run again to retry: {failed}", flush=True)
     return [charts[k] for k in sorted(charts)]
 
 

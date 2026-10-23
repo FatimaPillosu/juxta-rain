@@ -121,13 +121,23 @@ def update_runs_index(web, run, ecpoint):
     path.write_text(json.dumps(runs, indent=2))
 
 
-def build(run, rebuild_fields, settings):
+def build(run, rebuild_fields, settings, only_this_run=False):
     web = data_root(settings) / "web"
     web_run = web / "data" / run.strftime("%Y%m%d%H")
+    if only_this_run:
+        # The site holds one run (GitHub Pages allows 1 GB): drop the others.
+        for old in (web / "data").glob("[0-9]" * 10):
+            if old != web_run:
+                shutil.rmtree(old)
+        (web / "data" / "runs.json").unlink(missing_ok=True)
     if rebuild_fields or not (web_run / "fields.json").exists():
         build_run(run, settings)
     shutil.copytree(PROJECT_ROOT / "site", web, dirs_exist_ok=True)
-    ecpoint = copy_ecpoint(run, web_run, settings)
+    try:
+        ecpoint = copy_ecpoint(run, web_run, settings)
+    except Exception as err:  # publish the forecasts even if the ecPoint step breaks
+        print(f"WARNING: ecPoint charts left out: {err!r}")
+        ecpoint = None
     update_runs_index(web, run, ecpoint)
     print(f"Site assembled in {web}")
 
@@ -136,8 +146,9 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--run", required=True, help="Run as YYYYMMDDHH")
     parser.add_argument("--rebuild-fields", action="store_true", help="Rebuild the COGs even if present")
+    parser.add_argument("--only-this-run", action="store_true", help="Remove other runs from the site")
     args = parser.parse_args()
-    build(dt.datetime.strptime(args.run, "%Y%m%d%H"), args.rebuild_fields, load_settings())
+    build(dt.datetime.strptime(args.run, "%Y%m%d%H"), args.rebuild_fields, load_settings(), args.only_this_run)
 
 
 if __name__ == "__main__":
