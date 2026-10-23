@@ -14,7 +14,8 @@ A public, forecaster-style dashboard for a technical audience. It shows global 2
 
 - Observations: NOAA NCEI GHCNh (hourly). 24 h totals are built strictly from complete reports.
 - Domain: global (land and sea). The user zooms into any region; verification applies to land stations.
-- Runs: 00, 06, 12 and 18 UTC, with lead times to T+360 where available. 24 h windows are aligned with each run's cycle (00/12 runs: windows ending at 00 or 12 UTC; 06/18 runs: windows ending at 06 or 18 UTC).
+- Runs: **only the 00 UTC run**, lead times to T+360, 24 h windows ending at 00 and 12 UTC (decided by Fatima on 23 Oct 2026 for the minimum viable product; this replaces the earlier plan for all four runs). The site shows the 00 UTC run of the current day.
+- Daily update: `.github/workflows/daily.yml` runs `python -m rainfall_visualiser.daily` at 10:30 UTC on GitHub's servers and deploys to GitHub Pages (Pages source: GitHub Actions). Data exist only on the temporary runner during the job; the published site holds one run and is replaced each day. Nothing is archived yet. `C:\data\rainfall_visualiser` is only a local workspace for development.
 - ecPoint: the global Open Charts chart (`medium-point-rain-prob-24h`, `projection=opencharts_global`) is displayed **exactly as published**. No values are extracted from the images, so the comparison is qualitative only and ecPoint is excluded from the scores. Requests must be sequential and paced; never work around the Open Charts bot protection.
 - Colours: amounts use the ECMWF-style 24 h scale supplied by Fatima on 22 Oct 2026 (0.5 … 1000 mm, then above 1000; values as in `projects/irish_ffc/src/irish_ffc/rainfall_style.py`). Probabilities use the 12-class Open Charts ecPoint palette.
 - Model colours in charts: IFS (Control and ENS) #BA55D3; AIFS (Single and ENS) #FF6347. The selected window is drawn in the full colour and other windows in 50 % tints (#DDAAE9, #FFB1A3). Chosen by Fatima on 22 Oct 2026.
@@ -22,7 +23,7 @@ A public, forecaster-style dashboard for a technical audience. It shows global 2
 - Verification is shown as "coming soon" (not clickable) for the first public release.
 - Maps: GRIB → 24 h field → Cloud-Optimised GeoTIFF → OpenLayers in the browser (static site).
 - Public name: **Juxta Rain** (Fatima, 22 Oct 2026; replaces the earlier "Rain Ledger"). Logo: `site/assets/juxta-rain-logo.svg`, Fatima's file with only its viewBox tightened to the artwork; it contains the wordmark, so it is shown at 60 px height on the white header row. The project folder keeps its name `rainfall_visualiser`.
-- Hosting (later): GitHub Actions + GitHub Pages. The repository name is still to be agreed with Fatima, so do not create the repository yet.
+- Hosting: public repository https://github.com/FatimaPillosu/juxta-rain (code only on `main`), site https://fatimapillosu.github.io/juxta-rain/.
 - Work milestone by milestone, and stop for Fatima's confirmation at the end of each. Tests come last. The plan is in `MEMORY.md` and the agreed plan file.
 
 ## Conventions

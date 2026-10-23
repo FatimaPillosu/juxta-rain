@@ -4,9 +4,11 @@ name: Daily forecast
 
 on:
   schedule:
-    # 10:30 UTC: the 00 UTC open data (0.1 deg files included) and the ecPoint
-    # charts are normally available by then; the job waits up to 4 h if not.
-    - cron: "30 10 * * *"
+    # 09:30 UTC: the 00 UTC open data are normally complete by then. The job waits
+    # up to 2 h for missing open data and up to 1.5 h until Open Charts lists the
+    # run's ecPoint charts (within the 340 min job limit). GitHub may start
+    # scheduled jobs some minutes late.
+    - cron: "30 9 * * *"
   workflow_dispatch:
     inputs:
       run:

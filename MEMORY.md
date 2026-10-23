@@ -150,3 +150,21 @@
   - `web` 1.6 GB: the 778 MB site plus its git copy in `web/.git`.
   - Drive C: 23 GB free.
 - Open points: a retention policy for raw data and runs; how to update `gh-pages` without the repository growing (orphan commit + force-push); the daily automation; observations and verification; the point archive; tests.
+
+## 2026-10-23 — Claude Code (daily automation; 00 UTC only)
+
+- Changes:
+  - Fatima decided on a minimum viable product: only the 00 UTC run, updated daily without her PC.
+  - The local ecPoint download for 23 Oct was stopped at 30 charts, to avoid requesting the same charts twice. Yesterday's data was deleted from `C:\data` (raw GRIB, ecPoint PDFs, built site and the local `gh-pages` git copy); 1.5 GB remains, all for 23 Oct.
+  - New `daily.py`: waits for today's 00 UTC run to be complete (`retrieve_opendata.run_complete`, checks the last step of every product), downloads (skipping complete files), builds the layers, downloads ecPoint (retries; failures are not fatal), and assembles the site with this run only. Optional `--keep-raw-runs` and `--skip-ecpoint`.
+  - `config.data_root` honours the `RAIN_DATA_ROOT` environment variable. `build_site` publishes without ecPoint if that step fails, and has `--only-this-run`.
+  - `retrieve_ecpoint` retries HTTP errors (30/60/120 s), skips a chart that still fails and reports it. Open Charts returned HTTP 500 once on 23 Oct (T+72 >1 mm), which had stopped the old version.
+  - New `.github/workflows/daily.yml`: cron 10:30 UTC plus a manual trigger; ubuntu-latest, Python 3.11; `pip install -e .`; runs `daily`; uploads `/home/runner/rain-data/web` as the Pages artifact; deploys with `actions/deploy-pages@v4`.
+  - Pages source switched to "workflow" (`gh api -X PUT .../pages -f build_type=workflow`). Commit 96fc774 pushed; run 39966932932 started for 2026102300.
+- Verification:
+  - Local test of `daily --run 2026102300 --skip-ecpoint --keep-raw-runs 1`: the completeness check passed, downloads were skipped, the layers and site were built with one run, and nothing was pruned (13 min on this PC).
+  - On GitHub, the Install step succeeded (Linux wheels for eccodes, rasterio and pymupdf).
+- Open points:
+  - Whether Open Charts accepts requests from GitHub's servers (to be seen in this run).
+  - Delete the old `gh-pages` branch (778 MB) once the workflow deploy is confirmed.
+  - No history is stored anywhere; the verification archive is still to be decided.

@@ -43,6 +43,27 @@ def get_with_retries(session, url, **kwargs):
             time.sleep(wait)
 
 
+PACKAGE_API = "https://charts.ecmwf.int/opencharts-api/v1/packages/opencharts/products/{product}/"
+
+
+def wait_for_base_time(run, cfg, session, max_wait_h=1.5, poll_min=10):
+    """Wait until Open Charts lists `run` among the product's base times."""
+    stamp = run.strftime("%Y%m%d%H%M")
+    deadline = time.monotonic() + max_wait_h * 3600
+    while True:
+        try:
+            axes = get_with_retries(session, PACKAGE_API.format(product=cfg["product"])).json()["axis"]
+            times = [v["value"] for a in axes if a["name"] == "base_time" for v in a["values"]]
+            if stamp in times:
+                return
+        except requests.RequestException as err:
+            print(f"base-time check failed: {err!r}", flush=True)
+        if time.monotonic() > deadline:
+            raise RuntimeError(f"ecPoint charts for {stamp} not listed after {max_wait_h} h")
+        print(f"ecPoint charts for {stamp} not listed yet; checking again in {poll_min} min", flush=True)
+        time.sleep(poll_min * 60)
+
+
 def chart_requests(run, thresholds_mm, max_lead):
     """24 h charts every 12 h from T+24, as offered by Open Charts."""
     last = min(max_lead, MAX_LEAD[run.hour])
@@ -64,6 +85,8 @@ def retrieve(run, max_lead, settings):
     charts = {(c["lead_h"], c["threshold_mm"]): c for c in known
               if c["file"].endswith("." + fmt) and (out_dir / c["file"]).exists()}
     failed = []
+    if any((lead, thr) not in charts for lead, thr in chart_requests(run, settings["thresholds_mm"], max_lead)):
+        wait_for_base_time(run, cfg, session)
     for lead, thr in chart_requests(run, settings["thresholds_mm"], max_lead):
         if (lead, thr) in charts:
             continue
