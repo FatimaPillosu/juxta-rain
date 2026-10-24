@@ -182,3 +182,20 @@
   - GitHub warnings: Node 20 actions are being forced onto Node 24 (move to newer action versions when available), and `ubuntu-latest` migrates to Ubuntu 26 from 19 Oct 2026, which may affect the Python wheels; check the first runs.
   - Nothing is archived (verification archive still to be decided).
   - `C:\data\rainfall_visualiser` (about 1.5 GB, the 23 Oct run) is only a local workspace and can be deleted.
+
+## 2026-10-24 — Claude (chat session; daily schedule made self-healing)
+
+- Changes:
+  - `.github/workflows/daily.yml`: five schedules (09:37, 11:37, 13:37, 15:37 and 17:37 UTC) instead of one at 09:30 UTC.
+  - A new `check` job decides within seconds whether a run has work to do. A scheduled run stops if today's run was already published, if the publication marker exists (Actions cache key `published-YYYYMMDDHH`, saved by the deploy job), or if it starts before 08 UTC (a late schedule after midnight). If the site cannot be read, the run builds.
+  - Manual runs always build. The run id is chosen in `check` and passed to `daily --run`, so a run never changes date halfway.
+  - README and AGENTS.md updated.
+- Reason: no scheduled run started on 24 Oct 2026, the first day of the 09:30 UTC schedule. At about 12:25 UTC the Actions page listed only the manual run of 23 Oct, with nothing queued or failed, and GitHub Status showed no Actions incident. GitHub documents scheduled runs as best-effort: they may be delayed under load, and some may be dropped. Fatima wants the update to happen every day without her involvement.
+- Verification:
+  - `actionlint` 1.7.12, `shellcheck` and `pyflakes`: no findings.
+  - The run-selection and decision steps were extracted from the workflow and run locally. The run is today's when the input is empty, and invalid inputs are refused. All ten decision cases behaved as intended: manual run, marker found, live site (correctly "build" today), site already current, older run on the site, site unreachable, malformed JSON, 03:12 UTC (skip), 08:05 UTC.
+  - GitHub Pages ignores query strings in its cache (`?t=` requests were cache hits), so a cache-busted read of the site cannot confirm a fresh deployment; hence the marker.
+- Open points:
+  - GitHub disables schedules in public repositories after 60 days without repository activity. The docs do not define activity. Without another commit, the next deadline is about 23 Dec 2026. Reports disagree on whether automated keep-alive commits or API re-enabling reset the counter.
+  - If GitHub delays every schedule of this repository by many hours, the backups are late too.
+  - Up to four short runs a day will appear in the Actions list doing nothing. Pending runs replaced by a newer schedule show as "cancelled". Both are harmless.

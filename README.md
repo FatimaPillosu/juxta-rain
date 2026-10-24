@@ -36,4 +36,4 @@ python -m rainfall_visualiser.build_site --run 2026102200
 python -m rainfall_visualiser.serve
 ```
 
-Data are not stored in this repository. Every day at 09:30 UTC, the workflow `.github/workflows/daily.yml` builds the site for that day's 00 UTC run on GitHub's servers and publishes it to GitHub Pages, replacing the previous day.
+Data are not stored in this repository, and the daily update pushes nothing. Every day, the workflow `.github/workflows/daily.yml` builds the site for that day's 00 UTC run on GitHub's servers and publishes it to GitHub Pages, replacing the previous day. Its first schedule is 09:37 UTC. GitHub starts scheduled runs on a best-effort basis (sometimes late, occasionally not at all), so backup schedules follow every 2 h until 17:37 UTC. A backup stops within seconds if the day's run is already published, and otherwise builds and publishes it.

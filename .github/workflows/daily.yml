@@ -1,18 +1,29 @@
 # Daily update of Juxta Rain: builds the site for today's 00 UTC ECMWF run on
-# GitHub's servers and publishes it to GitHub Pages. No data is committed.
+# GitHub's servers and publishes it to GitHub Pages. No data are committed and
+# nothing is pushed: the site is deployed directly from the job.
+#
+# GitHub starts scheduled runs on a best-effort basis: they can start late or,
+# under heavy load, not at all (none started on 24 Oct 2026). The workflow
+# therefore has five schedules. The first one to run does the work. Each later
+# one checks whether today's run is already published and, if so, stops within
+# seconds; if not (a missed, late or failed run), it builds and publishes it.
 name: Daily forecast
 
 on:
   schedule:
-    # 09:30 UTC: the 00 UTC open data are normally complete by then. The job waits
-    # up to 2 h for missing open data and up to 1.5 h until Open Charts lists the
-    # run's ecPoint charts (within the 340 min job limit). GitHub may start
-    # scheduled jobs some minutes late.
-    - cron: "30 9 * * *"
+    # Minutes are kept off the top of the hour, GitHub's busiest time. The 00 UTC
+    # open data are normally complete by 09:37 UTC. The job waits up to 2 h for
+    # missing open data and up to 1.5 h until Open Charts lists the run's ecPoint
+    # charts (within the 340 min job limit).
+    - cron: "37 9 * * *"
+    - cron: "37 11 * * *"
+    - cron: "37 13 * * *"
+    - cron: "37 15 * * *"
+    - cron: "37 17 * * *"
   workflow_dispatch:
     inputs:
       run:
-        description: "Run as YYYYMMDDHH (empty = today 00 UTC)"
+        description: "Run as YYYYMMDDHH (empty = today 00 UTC); a manual run always builds"
         required: false
         default: ""
 
@@ -21,16 +32,89 @@ permissions:
   pages: write
   id-token: write
 
+# One run at a time: a schedule that fires while a run is in progress waits for
+# it, then finds today's run published and stops.
 concurrency:
   group: pages
   cancel-in-progress: false
 
 jobs:
+  check:
+    # Decides, in a few seconds, whether this run has anything to do.
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      run: ${{ steps.run.outputs.run }}
+      todo: ${{ steps.decide.outputs.todo }}
+    steps:
+      - name: Choose the run
+        id: run
+        env:
+          INPUT_RUN: ${{ inputs.run }}
+        run: |
+          run="${INPUT_RUN:-$(date -u +%Y%m%d)00}"
+          if [[ ! "$run" =~ ^[0-9]{10}$ ]]; then
+            echo "::error::The run must be YYYYMMDDHH, not '$run'"
+            exit 1
+          fi
+          echo "run=$run" >> "$GITHUB_OUTPUT"
+          echo "Run $run; event $GITHUB_EVENT_NAME; started $(date -u '+%Y-%m-%d %H:%M') UTC"
+
+      # The marker is saved by the deploy job after each publication. It is read
+      # instead of relying on the site alone, because GitHub Pages may serve the
+      # previous runs.json from its cache for up to 10 min after a deployment.
+      - name: Look for the publication marker of this run
+        id: marker
+        if: github.event_name == 'schedule'
+        continue-on-error: true
+        uses: actions/cache/restore@v6
+        with:
+          path: .published
+          key: published-${{ steps.run.outputs.run }}
+          lookup-only: true
+
+      - name: Decide
+        id: decide
+        env:
+          RUN: ${{ steps.run.outputs.run }}
+          MARKER: ${{ steps.marker.outputs.cache-hit }}
+          SITE: https://fatimapillosu.github.io/juxta-rain
+        shell: python3 {0}
+        run: |
+          import datetime as dt, json, os, urllib.request
+
+          run = os.environ["RUN"]
+          todo, why = True, "manual run, which always builds"
+          if os.environ["GITHUB_EVENT_NAME"] == "schedule":
+              now = dt.datetime.now(dt.timezone.utc)
+              if now.hour < 8:
+                  # A late schedule that slipped past midnight: today's run is not out yet.
+                  todo, why = False, f"{now:%H:%M} UTC is too early for run {run}"
+              elif os.environ.get("MARKER") == "true":
+                  todo, why = False, f"run {run} was published by an earlier run today"
+              else:
+                  try:
+                      url = f"{os.environ['SITE']}/data/runs.json"
+                      with urllib.request.urlopen(url, timeout=30) as r:
+                          ids = [x["id"] for x in json.load(r)]
+                      if run in ids:
+                          todo, why = False, f"run {run} is already on the site"
+                      else:
+                          why = f"the site shows {ids}, not {run}"
+                  except Exception as err:  # when unsure, build rather than miss a day
+                      why = f"the site could not be read ({err!r})"
+          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+              f.write(f"todo={str(todo).lower()}\n")
+          print(("Build and publish: " if todo else "Nothing to do: ") + why)
+
   build:
+    needs: check
+    if: needs.check.outputs.todo == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 340
     env:
       RAIN_DATA_ROOT: /home/runner/rain-data
+      RUN: ${{ needs.check.outputs.run }}
     steps:
       - uses: actions/checkout@v4
 
@@ -43,7 +127,7 @@ jobs:
         run: pip install -e .
 
       - name: Download, build and assemble the site
-        run: python -m rainfall_visualiser.daily ${{ inputs.run && format('--run {0}', inputs.run) || '' }}
+        run: python -m rainfall_visualiser.daily --run "$RUN"
 
       - name: Site size
         run: du -sh "$RAIN_DATA_ROOT/web" "$RAIN_DATA_ROOT/web/data"/*
@@ -53,7 +137,8 @@ jobs:
           path: /home/runner/rain-data/web
 
   deploy:
-    needs: build
+    # Skipped automatically when the build is skipped.
+    needs: [check, build]
     runs-on: ubuntu-latest
     environment:
       name: github-pages
@@ -61,3 +146,15 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
+
+      - name: Write the publication marker
+        env:
+          RUN: ${{ needs.check.outputs.run }}
+        run: echo "$RUN" > .published
+
+      - name: Save the publication marker
+        continue-on-error: true
+        uses: actions/cache/save@v6
+        with:
+          path: .published
+          key: published-${{ needs.check.outputs.run }}
